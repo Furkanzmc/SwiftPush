@@ -1,6 +1,5 @@
 //
 //  SwiftPush.swift
-//  TableViewStory
 //
 //  Created by Furkan Üzümcü on 22/09/14.
 //  Copyright (c) 2014 Furkan Üzümcü. All rights reserved.
