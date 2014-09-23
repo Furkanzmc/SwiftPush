@@ -147,8 +147,28 @@ class SwiftPush {
         return Push(ID: ID, title: title, body: body, url: url, targetDeviceID: targetDeviceID, senderEmail: senderEmail, receiverEmail: receiverEmail, addressName: addressName, address: address, fileName: fileName, fileType: fileType, fileURL: fileURL, type: type, modified: modified, created: created, list: list, isActive: isActive)
     }
     
-    private func push(responseHandler: ((NSError?) -> ())?, parameters: [String : AnyObject]) {
-        Alamofire.request(.POST, mURLPushes, parameters: parameters, encoding: .JSON)
+    private func parseContactData(value: JSON) -> Contact {
+        var name = value["name"].stringValue!
+        var email = value["email"].stringValue!
+        var ID = value["iden"].stringValue!
+        return Contact(name: name, email: email, ID: ID)
+    }
+    
+    private func parseDeviceData(value: JSON) -> Device {
+        var active = value["active"].boolValue
+        var appVersion = value["app_version"].integerValue
+        var ID = value["iden"].stringValue!
+        var manufacturer: String? = value["manufacturer"].stringValue
+        var type = value["type"].stringValue!
+        var pushable = value["pushable"].boolValue
+        var pushToken: String? = value["push_token"].stringValue
+        var nickname = value["nickname"].stringValue!
+        var model: String? = value["model"].stringValue
+        return Device(ID: ID, pushToken: pushToken, nickname: nickname, manufacturer: manufacturer, model: model, type: type, appVersion: appVersion, active: active, pushable: pushable)
+    }
+    
+    private func push(responseHandler: ((NSError?) -> ())?, parameters: [String : AnyObject], url: String) {
+        Alamofire.request(.POST, url, parameters: parameters, encoding: .JSON)
             .authenticate(user: mAPIKey, password: mAPIKey)
             .responseJSON {(request, response, output, error) in
                 if responseHandler != nil {
@@ -159,10 +179,9 @@ class SwiftPush {
     
     /// Pushes the given list. To push to all devices provide nil for both deviceID and email. Provide a responseHandler to be notified if the push succeeds.
     func pushList(title: String, items: Array<String>, deviceID: String?, email: String?, responseHandler: ((NSError?) -> ())?) {
-        var parameters = [
+        var parameters: [String: AnyObject] = [
             "type": "note",
             "title": title,
-            "dummy": ["dumy", 1],
             "items": items,
         ]
         if deviceID != nil {
@@ -171,15 +190,14 @@ class SwiftPush {
         if email != nil {
             parameters["email"] = email!
         }
-        push(responseHandler, parameters: parameters)
+        push(responseHandler, parameters: parameters, url: mURLPushes)
     }
     
     /// Pushes the given note. To push to all devices provide nil for both deviceID and email. Provide a responseHandler to be notified if the push succeeds.
     func pushNote(title: String, body: String, deviceID: String?, email: String?, responseHandler: ((NSError?) -> ())?) {
-        var parameters = [
+        var parameters: [String: AnyObject] = [
             "type": "note",
             "title": title,
-            "dummy": ["dumy", 1],
             "body": body
         ]
         if deviceID != nil {
@@ -188,15 +206,14 @@ class SwiftPush {
         if email != nil {
             parameters["email"] = email!
         }
-        push(responseHandler, parameters: parameters)
+        push(responseHandler, parameters: parameters, url: mURLPushes)
     }
     
     /// Pushes the given address. To push to all devices provide nil for both deviceID and email. Provide a responseHandler to be notified if the push succeeds.
     func pushAddress(name: String, body: String?, address: String, deviceID: String?, email: String?, responseHandler: ((NSError?) -> ())?) {
-        var parameters = [
+        var parameters: [String: AnyObject] = [
             "type": "address",
             "name": name,
-            "dummy": ["dumy", 1],
             "body": body!,
             "address": address
         ]
@@ -206,15 +223,14 @@ class SwiftPush {
         if email != nil {
             parameters["email"] = email!
         }
-        push(responseHandler, parameters: parameters)
+        push(responseHandler, parameters: parameters, url: mURLPushes)
     }
     
     /// Pushes the given lin. To push to all devices provide nil for both deviceID and email. Provide a responseHandler to be notified if the push succeeds.
     func pushLink(title: String, body: String?, url: String, deviceID: String?, email: String?, responseHandler: ((NSError?) -> ())?) {
-        var parameters = [
+        var parameters: [String: AnyObject] = [
             "type": "link",
             "title": title,
-            "dummy": ["dumy", 1],
             "body": body!,
             "url": url
         ]
@@ -224,6 +240,54 @@ class SwiftPush {
         if email != nil {
             parameters["email"] = email!
         }
-        push(responseHandler, parameters: parameters)
+        push(responseHandler, parameters: parameters, url: mURLPushes)
+    }
+    
+    /// Provide a responseHandler to get the error or the created contact
+    func createContact(name: String, email: String, responseHandler: ((Contact?, NSError?) -> ())?) {
+        var parameters: [String: AnyObject] = [
+            "name": name,
+            "email": email,
+        ]
+        Alamofire.request(.POST, mURLContacts, parameters: parameters, encoding: .JSON)
+            .authenticate(user: mAPIKey, password: mAPIKey)
+            .responseJSON {(request, response, output, error) in
+                if responseHandler != nil {
+                    if error != nil {
+                        responseHandler!(nil, error)
+                    }
+                    else {
+                        let json = JSON(data: output as NSData)
+                        responseHandler!(self.parseContactData(json), nil)
+                    }
+                }
+        }
+    }
+    
+    /// Provide a responseHandler to get the error or the created device
+    func createDevice(name: String, manufacturer: String?, model: String?, responseHandler:((Device?, NSError?) -> ())?) {
+        var parameters: [String: AnyObject] = [
+            "nickname": name,
+            "type": "stream"
+        ]
+        if manufacturer != nil {
+            parameters["manufacturer"] = manufacturer
+        }
+        if model != nil {
+            parameters["model"] = model
+        }
+        Alamofire.request(.POST, mURLDevices, parameters: parameters, encoding: .JSON)
+            .authenticate(user: mAPIKey, password: mAPIKey)
+            .responseJSON {(request, response, output, error) in
+                if responseHandler != nil {
+                    if error != nil {
+                        responseHandler!(nil, error)
+                    }
+                    else {
+                        let json = JSON(data: output as NSData)
+                        responseHandler!(self.parseDeviceData(json), nil)
+                    }
+                }
+        }
     }
 }
