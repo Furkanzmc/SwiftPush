@@ -290,4 +290,46 @@ class SwiftPush {
                 }
         }
     }
+    
+    /// Provide a responseHandler to get the error or the updated contact
+    func updateContact(contactID: String, newName: String, responseHandler:((Device?, NSError?) -> ())?) {
+        var modifiedURL = mURLContacts + "/" + contactID
+        var parameters: [String : AnyObject] = [
+            "name" : newName
+        ]
+        Alamofire.request(.POST, modifiedURL, parameters: parameters, encoding: .JSON)
+            .authenticate(user: mAPIKey, password: mAPIKey)
+            .responseJSON {(request, response, output, error) in
+                if responseHandler != nil {
+                    if error != nil {
+                        responseHandler!(nil, error)
+                    }
+                    else {
+                        let json = JSON(data: output as NSData)
+                        responseHandler!(self.parseDeviceData(json), nil)
+                    }
+                }
+        }
+    }
+    
+    /// Provide a responseHandler to get the error or the updated device
+    func updateDevice(deviceID: String, newNickname: String, responseHandler:((Device?, NSError?) -> ())?) {
+        var modifiedURL = mURLDevices + "/" + deviceID
+        var parameters: [String : AnyObject] = [
+            "nickname" : newNickname
+        ]
+        Alamofire.request(.POST, modifiedURL, parameters: parameters, encoding: .JSON)
+            .authenticate(user: mAPIKey, password: mAPIKey)
+            .responseJSON {(request, response, output, error) in
+                if responseHandler != nil {
+                    if error != nil {
+                        responseHandler!(nil, error)
+                    }
+                    else {
+                        let json = JSON(data: output as NSData)
+                        responseHandler!(self.parseDeviceData(json), nil)
+                    }
+                }
+        }
+    }
 }
