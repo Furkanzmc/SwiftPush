@@ -332,4 +332,32 @@ class SwiftPush {
                 }
         }
     }
+    
+    /// Provide a responseHandler to get a possible error
+    func deleteDevice(deviceID: String, responseHandler:((NSError?) -> ())?) {
+        var modifiedURL = mURLDevices + "/" + deviceID
+        Alamofire.request(.DELETE, modifiedURL, parameters: nil, encoding: .JSON)
+            .authenticate(user: mAPIKey, password: mAPIKey)
+            .responseJSON {(request, response, output, error) in
+                if responseHandler != nil {
+                    if error != nil {
+                        responseHandler!(error)
+                    }
+                }
+        }
+    }
+    
+    /// Provide a responseHandler to get a possible error
+    func deleteContact(contactID: String, responseHandler:((NSError?) -> ())?) {
+        var modifiedURL = mURLContacts + "/" + contactID
+        Alamofire.request(.DELETE, modifiedURL, parameters: nil, encoding: .JSON)
+            .authenticate(user: mAPIKey, password: mAPIKey)
+            .responseJSON {(request, response, output, error) in
+                if responseHandler != nil {
+                    if error != nil {
+                        responseHandler!(error)
+                    }
+                }
+        }
+    }
 }
