@@ -147,6 +147,7 @@ class SwiftPush {
         return Push(ID: ID, title: title, body: body, url: url, targetDeviceID: targetDeviceID, senderEmail: senderEmail, receiverEmail: receiverEmail, addressName: addressName, address: address, fileName: fileName, fileType: fileType, fileURL: fileURL, type: type, modified: modified, created: created, list: list, isActive: isActive)
     }
     
+    /// Parses the given json object and returns a Contact
     private func parseContactData(value: JSON) -> Contact {
         var name = value["name"].stringValue!
         var email = value["email"].stringValue!
@@ -154,6 +155,7 @@ class SwiftPush {
         return Contact(name: name, email: email, ID: ID)
     }
     
+    /// Parses the given json object and returns a Device
     private func parseDeviceData(value: JSON) -> Device {
         var active = value["active"].boolValue
         var appVersion = value["app_version"].integerValue
@@ -243,6 +245,8 @@ class SwiftPush {
         push(responseHandler, parameters: parameters, url: mURLPushes)
     }
     
+    //MARK: Creation
+    
     /// Provide a responseHandler to get the error or the created contact
     func createContact(name: String, email: String, responseHandler: ((Contact?, NSError?) -> ())?) {
         var parameters: [String: AnyObject] = [
@@ -291,6 +295,8 @@ class SwiftPush {
         }
     }
     
+    //MARK: Update
+    
     /// Provide a responseHandler to get the error or the updated contact
     func updateContact(contactID: String, newName: String, responseHandler:((Device?, NSError?) -> ())?) {
         var modifiedURL = mURLContacts + "/" + contactID
@@ -332,6 +338,7 @@ class SwiftPush {
                 }
         }
     }
+    //MARK: Deletion
     
     /// Provide a responseHandler to get a possible error
     func deleteDevice(deviceID: String, responseHandler:((NSError?) -> ())?) {
