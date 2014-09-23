@@ -10,6 +10,8 @@ import Alamofire
 
 class SwiftPush {
     
+    //MARK: Variables
+    
     private let mAPIKey: String
     private let mURLContacts: String = "https://api.pushbullet.com/v2/contacts"
     private let mURLDevices: String = "https://api.pushbullet.com/v2/devices"
@@ -37,6 +39,10 @@ class SwiftPush {
         var modified: Double, created: Double
         var list: Array<JSON>?
         var isActive: Bool
+    }
+    
+    struct File {
+        var fileType: String, fileName: String, fileURL: String, uploadURL: String, data: [String : AnyObject]
     }
     
     /// Initialize the class with the API key
@@ -169,6 +175,22 @@ class SwiftPush {
         return Device(ID: ID, pushToken: pushToken, nickname: nickname, manufacturer: manufacturer, model: model, type: type, appVersion: appVersion, active: active, pushable: pushable)
     }
     
+    private func parseUploadRequest(value: JSON) -> File {
+        var fileName = value["file_name"].stringValue!
+        var fileType = value["file_type"].stringValue!
+        var fileURL = value["file_url"].stringValue!
+        var uploadURL = value["upload_url"].stringValue!
+        var data: [String : AnyObject] = [
+            "awsaccesskeyid" : value["data"]["awsaccesskeyid"].stringValue!,
+            "acl" : value["data"]["acl"].stringValue!,
+            "key" : value["data"]["key"].stringValue!,
+            "signature" : value["data"]["signature"].stringValue!,
+            "policy" : value["data"]["policy"].stringValue!,
+            "content-type" : value["data"]["content-type"].stringValue!
+        ]
+        return File(fileType: fileType, fileName: fileName, fileURL: fileURL, uploadURL: uploadURL, data: data)
+    }
+    
     private func push(responseHandler: ((NSError?) -> ())?, parameters: [String : AnyObject], url: String) {
         Alamofire.request(.POST, url, parameters: parameters, encoding: .JSON)
             .authenticate(user: mAPIKey, password: mAPIKey)
@@ -243,6 +265,26 @@ class SwiftPush {
             parameters["email"] = email!
         }
         push(responseHandler, parameters: parameters, url: mURLPushes)
+    }
+    
+    func requestUploadAuthorization(fileName: String, filePath: String) {
+        let params: [String : AnyObject] = ["file_name" : fileName]
+        Alamofire.request(.POST, mURLUploadRequest, parameters: params, encoding: .JSON)
+            .authenticate(user: mAPIKey, password: mAPIKey)
+            .responseJSON {(request, response, output, error) in
+                self.uploadFile(self.parseUploadRequest(JSON(data: output as NSData)), filePath: filePath)
+        }
+    }
+    
+    func uploadFile(file: File, filePath: String) {
+        var fileData = NSFileManager.defaultManager().contentsAtPath(filePath)
+        Alamofire.upload(.POST, file.uploadURL, fileData!)
+            .progress { (bytesWritten, totalBytesWritten, totalBytesExpectedToWrite) in
+                println(totalBytesWritten)
+            }
+            .responseJSON { (request, response, json, error) in
+                println(json)
+        }
     }
     
     //MARK: Creation
@@ -338,6 +380,28 @@ class SwiftPush {
                 }
         }
     }
+    
+    /// Provide a responseHandler to get the error or the updated device
+    func updatePush(pushID: String, dismissed: Bool, responseHandler:((Push?, NSError?) -> ())?) {
+        var modifiedURL = mURLPushes + "/" + pushID
+        var parameters: [String : AnyObject] = [
+            "dismissed" : dismissed
+        ]
+        Alamofire.request(.POST, modifiedURL, parameters: parameters, encoding: .JSON)
+            .authenticate(user: mAPIKey, password: mAPIKey)
+            .responseJSON {(request, response, output, error) in
+                if responseHandler != nil {
+                    if error != nil {
+                        responseHandler!(nil, error)
+                    }
+                    else {
+                        let json = JSON(data: output as NSData)
+                        responseHandler!(self.parsePushData(json), nil)
+                    }
+                }
+        }
+    }
+    
     //MARK: Deletion
     
     /// Provide a responseHandler to get a possible error
@@ -357,6 +421,20 @@ class SwiftPush {
     /// Provide a responseHandler to get a possible error
     func deleteContact(contactID: String, responseHandler:((NSError?) -> ())?) {
         var modifiedURL = mURLContacts + "/" + contactID
+        Alamofire.request(.DELETE, modifiedURL, parameters: nil, encoding: .JSON)
+            .authenticate(user: mAPIKey, password: mAPIKey)
+            .responseJSON {(request, response, output, error) in
+                if responseHandler != nil {
+                    if error != nil {
+                        responseHandler!(error)
+                    }
+                }
+        }
+    }
+    
+    /// Provide a responseHandler to get a possible error
+    func deletePush(pushID: String, responseHandler:((NSError?) -> ())?) {
+        var modifiedURL = mURLPushes + "/" + pushID
         Alamofire.request(.DELETE, modifiedURL, parameters: nil, encoding: .JSON)
             .authenticate(user: mAPIKey, password: mAPIKey)
             .responseJSON {(request, response, output, error) in
